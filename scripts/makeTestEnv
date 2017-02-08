@@ -9,6 +9,7 @@ cat ../.jpmignore ../.jpmignore-testing-env > .jpmignore
 ln -s ../Gruntfile.js .
 ln -s ../node_modules .
 ln -s ../data .
+ln -s ../locale .
 ln -s ../coverage/instrument/lib .
 ln -s ../package.json .
 ln -s ../test .

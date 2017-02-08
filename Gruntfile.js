@@ -5,7 +5,7 @@ module.exports = function (grunt) {
   process.env.coveragedir = require('os').tmpdir();
   console.log('coveragedir: %s', process.env.coveragedir);
 
-  var fxBinary = process.env.JPM_FIREFOX_BINARY || 'Aurora';
+  var fxBinary = process.env.JPM_FIREFOX_BINARY || 'Nightly';
 
   grunt.initConfig({
     eslint: {

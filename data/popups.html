@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- <script src="popups.js"/> -->
+  <!-- <link rel="stylesheet" type="text/css" href="popups.css"> -->
+</head>
+<body>
+
+<div id="ef-tell-us-more" class="ef-view" hidden="true">
+  <p data-l10n-id="tell_us_more.message"></p>
+  <p>
+    <form name="tell-us-more-form" class="ef-radio-section" id="tell-us-more-form">
+      <div>
+        <input id="video-broken" type="radio" name="problems-radio" value="video-broken">
+        <label for="video-broken" data-l10n-id="tell_us_more.video_broken"></label>
+      </div>
+      <div>
+        <input id="audio-broken" type="radio" name="problems-radio" value="audio-broken">
+        <label for="audio-broken" data-l10n-id="tell_us_more.audio_broken"></label>
+      </div>
+      <div>
+        <input id="game-broken" type="radio" name="problems-radio" value="game-broken">
+        <label for="game-broken" data-l10n-id="tell_us_more.game_broken"></label>
+      </div>
+      <div>
+        <input id="see-advertisements" type="radio" name="problems-radio" value="see-advertisements">
+        <label for="see-advertisements" data-l10n-id="tell_us_more.see_advertisements"></label>
+      </div>
+      <div>
+        <input id="images-missing" type="radio" name="problems-radio" value="images-missing">
+        <label for="images-missing" data-l10n-id="tell_us_more.images_missing"></label>
+      </div>
+      <div>
+        <input id="layout-broken" type="radio" name="problems-radio" value="layout-broken">
+        <label for="layout-broken" data-l10n-id="tell_us_more.layout_broken"></label>
+      </div>
+      <div>
+        <input id="other-broken" type="radio" name="problems-radio" value="other-broken">
+        <label for="other-broken" data-l10n-id="tell_us_more.other_broken"></label>
+      </div>
+    </form>
+  </p>
+  <p>
+    <a href="#" data-event="form-submit:tell-us-more-form"
+       class="btn primary" data-l10n-id="tell_us_more.submit"></a>
+  </p>
+</div>
+
+<div id="ef-tell-us-more-detail" class="ef-view" hidden="true">
+  <p data-l10n-id="tell_us_more_detail.message"></p>
+  <p>
+    <form name="tell-us-more-detail-form" id="tell-us-more-detail-form">
+      <textarea name="tell-us-more-detail"
+                data-l10n-id="tell_us_more_detail.input"></textarea>
+    </form>
+  </p>
+  <p>
+    <a href="#" data-event="form-submit:tell-us-more-detail-form" class="btn primary"
+       data-l10n-id="tell_us_more_detail.submit"></a>
+  </p>
+</div>
+
+<div id="ef-having-problems" class="ef-view" hidden="true">
+  <p data-l10n-id="having_problems.message"></p>
+  <p>
+    <a href="#" data-event="having-problems:yes" class="btn primary"
+       data-l10n-id="having_problems.yes"></a>
+    <a href="#" data-event="having-problems:no" class="btn"
+       data-l10n-id="having_problems.no"></a>
+  </p>
+</div>
+
+<div id="ef-has-activating-solved" class="ef-view" hidden="true">
+  <p data-l10n-id="has_activating_solved.message"></p>
+  <p>
+    <a href="#" data-event="has-activating-solved:yes" class="btn primary"
+       data-l10n-id="has_activating_solved.yes"></a>
+    <a href="#" data-event="has-activating-solved:no" class="btn"
+       data-l10n-id="has_activating_solved.no"></a>
+    <a href="#" data-event="has-activating-solved:not-sure" class="btn"
+       data-l10n-id="has_activating_solved.not_sure"></a>
+  </p>
+</div>
+
+<div id="ef-has-deactivating-solved" class="ef-view" hidden="true">
+  <p data-l10n-id="has_deactivating_solved.message"></p>
+  <p>
+    <a href="#" data-event="has-deactivating-solved:yes" class="btn primary"
+       data-l10n-id="has_deactivating_solved.yes"></a>
+    <a href="#" data-event="has-deactivating-solved:no" class="btn"
+       data-l10n-id="has_deactivating_solved.no"></a>
+    <a href="#" data-event="has-deactivating-solved:not-sure" class="btn"
+       data-l10n-id="has_activating_solved.not_sure"></a>
+  </p>
+</div>
+
+</body>
+</html>

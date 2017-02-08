@@ -1,15 +1,14 @@
 {
   "name": "shield-study-essential-flash",
-  "description": "<some feature> as a Shield Study",
+  "description": "Essential Flash as a Shield Study",
   "version": "1.0.0",
-  "author": "Unknown",
+  "author": "Doug Thayer",
   "bugs": {
     "url": "https://github.com/mozilla/shield-study-essential-flash/issues"
   },
   "dependencies": {},
   "devDependencies": {
     "addons-linter": "^0.15.5",
-    "chai": "^3.5.0",
     "depcheck-ci": "^1.0.1",
     "eslint": "^3.6.1",
     "fixpack": "^2.3.1",
@@ -20,7 +19,6 @@
     "istanbul-jpm": "^0.1.0",
     "jpm": "^1.0.7",
     "npm-run-all": "^3.1.0",
-    "nsp": "^2.6.2",
     "shield-studies-addon-utils": "^2.0.0",
     "yamljs": "^0.2.8"
   },
@@ -46,10 +44,9 @@
     "lint:depcheck": "depcheck-ci  # use coverage to catch missing",
     "lint:eslint": "eslint .",
     "lint:fixpack": "fixpack",
-    "lint:nsp": "nsp check",
     "prepublish": "npm shrinkwrap",
     "pretest": "npm-run-all lint:*",
     "test": "grunt test && istanbul check-coverage --statements 100 --functions 100 --branches 100 --lines 100 coverage/reports/coverage.json"
   },
-  "title": "Template for creating shield study add-ons"
+  "title": "Essential Flash"
 }

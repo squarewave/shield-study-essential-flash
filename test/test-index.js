@@ -1,12 +1,4 @@
-//var main = require("../");
-
-exports['test main'] = function(assert) {
-  assert.pass('Unit test running!');
-};
-
-exports['test main async'] = function(assert, done) {
-  assert.pass('async Unit test running!');
-  done();
-};
-
-require('sdk/test').run(exports);
+// TODO: I can't figure out a good way to test the actual
+// functionality of this addon using the normal add-on
+// testing tools. If someone has a suggestion that would be
+// very much appreciated.

@@ -11,7 +11,7 @@
 !/node_modules/shield-studies-addon-utils/**
 
 ## allow in lib and data
-!/{lib,data}/**
+!/{lib,data,locale}/**
 
 # but not .DS_Store files!
 {lib,data}/**/.DS_Store
