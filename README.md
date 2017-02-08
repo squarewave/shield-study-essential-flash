@@ -8,6 +8,10 @@ click-to-play by default. Still a WIP.
 Get the necessary tools (assuming you have node.js installed):
 
 ```
+git clone https://github.com/squarewave/shield-study-essential-flash.git
+cd shield-study-essential-flash
+npm install
+
 npm install -g shield-study-cli jpm
 ```
 
