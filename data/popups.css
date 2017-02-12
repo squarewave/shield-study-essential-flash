@@ -15,7 +15,7 @@ body {
 }
 
 .ef-radio-section > div:not(:last-child) {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .ef-radio-section label {
@@ -65,4 +65,8 @@ body {
 
 .btn.primary:hover {
   background-color: #008acc;
+}
+
+input {
+  outline: none;
 }

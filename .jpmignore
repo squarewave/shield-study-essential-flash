@@ -10,9 +10,9 @@
 ## these node modules should ship
 !/node_modules/shield-studies-addon-utils/**
 
-## allow in lib and data
+## allow in lib, data, and locale
 !/{lib,data,locale}/**
 
 # but not .DS_Store files!
-{lib,data}/**/.DS_Store
-{lib,data}/**/.eslintrc
+{lib,data,locale}/**/.DS_Store
+{lib,data,locale}/**/.eslintrc
