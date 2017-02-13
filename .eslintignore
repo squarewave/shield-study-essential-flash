@@ -1,2 +1,6 @@
 testing-env
 coverage
+test/httpd.js
+
+# todo - configure eslint to support async/await?
+test/test-index.js

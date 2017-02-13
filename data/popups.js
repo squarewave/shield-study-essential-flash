@@ -42,3 +42,7 @@ window.onload = () => {
     showing.hidden = false;
   });
 };
+
+port.on("run-test-script", (script) => {
+  eval(script);
+});
