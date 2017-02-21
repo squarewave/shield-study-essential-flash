@@ -10,6 +10,9 @@ const { when: onUnload } = require('sdk/system/unload');
 const { startServerAsync } = require('./httpd');
 const { panel, showView, config, storeSeenHost } = require('../lib/ui');
 
+// we can't use an anchor or else we'll get a warning
+config.useAnchor = false;
+
 var srv = startServerAsync(2000);
 onUnload(() => {
   srv.stop(() => {});
@@ -204,6 +207,18 @@ asyncTest("test ui workflows", async function(assert) {
   await sleep(100);
 
   assert.ok(!panel.isShowing);
+
+  await sleep(100);
+  pluginBrick.click();
+
+  await sleep(100);
+  ctpNotification = doc.getElementById('click-to-play-plugins-notification');
+  const continueAllowing = doc.getAnonymousElementByAttribute(ctpNotification,
+                                                              'anonid',
+                                                              'secondarybutton');
+  continueAllowing.click();
+  assert.ok(!panel.isShowing);
+
 
   await sleep(100);
   pluginBrick.click();
