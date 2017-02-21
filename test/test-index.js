@@ -8,7 +8,7 @@ const { browserWindows } = require('sdk/windows');
 const { when: onUnload } = require('sdk/system/unload');
 
 const { startServerAsync } = require('./httpd');
-const { panel, showView } = require('../lib/ui');
+const { panel, showView, config, storeSeenHost } = require('../lib/ui');
 
 var srv = startServerAsync(2000);
 onUnload(() => {
@@ -56,7 +56,7 @@ function panelScript(assert, script) {
     }`);
   return new Promise(resolve => {
     panel.port.once('script-done', (err) => {
-      assert.ok(!err, err);
+      assert.ok(!err, err || "no error");
       resolve();
     });
   });
@@ -66,7 +66,57 @@ function sleep(millis) {
   return new Promise(resolve => setTimeout(resolve, millis));
 }
 
-async function testWorkflows(assert) {
+function tabReady(tab) {
+  return new Promise(resolve => tab.once('ready', resolve));
+}
+
+async function clickPanelElement(assert, id) {
+  await panelScript(assert, `document.getElementById('${id}').click()`);
+}
+
+async function panelAssertElementShowing(assert, id) {
+  await panelAssert(assert, `!document.getElementById("${id}").hidden`);
+}
+
+function asyncTest(name, cb) {
+  exports[name] = (assert, done) => cb(assert).then(done);
+}
+
+asyncTest("test about:addons", async function(assert) {
+  const chromeGlobal = viewFor(browserWindows.activeWindow);
+
+  chromeGlobal.openNewTabWith("about:addons");
+  await sleep(500);
+  chromeGlobal.switchToTabHavingURI("about:addons");
+  await sleep(100);
+  chromeGlobal.gBrowser.removeCurrentTab();
+  await sleep(100);
+});
+
+asyncTest("test showView", async function (assert) {
+  const chromeGlobal = viewFor(browserWindows.activeWindow);
+
+  const tab = await new Promise(resolve => tabs.open({
+    url: 'about:home',
+    onOpen(tab) { resolve(tab); }
+  }));
+
+  await tabReady(tab);
+  panel.port.emit('run-test-script', 'port.emit("having-problems", "yes")');
+  await sleep(100);
+  await panelAssertElementShowing(assert, 'ef-tell-us-more');
+
+  panel.port.emit('run-test-script', 'port.emit("having-problems", "yes")');
+  await sleep(100);
+  await panelAssertElementShowing(assert, 'ef-tell-us-more');
+
+  panel.hide();
+  await sleep(100);
+
+  tab.close();
+});
+
+asyncTest("test ui workflows", async function(assert) {
   const chromeGlobal = viewFor(browserWindows.activeWindow);
   const doc = chromeGlobal.document;
 
@@ -75,13 +125,40 @@ async function testWorkflows(assert) {
     onOpen(tab) { resolve(tab); }
   }));
 
-  await new Promise(resolve => tab.once('ready', resolve));
+  await tabReady(tab);
+  chromeGlobal.BrowserReload();
+
+  await tabReady(tab);
+  await panelAssertElementShowing(assert, 'ef-having-problems');
+  await clickPanelElement(assert, 'having-problems-no');
+  await sleep(100);
+
+  storeSeenHost(chromeGlobal, false);
+  chromeGlobal.BrowserReload();
+
+  await tabReady(tab);
+  await panelAssertElementShowing(assert, 'ef-having-problems');
+  await clickPanelElement(assert, 'having-problems-yes');
+
+  await panelAssertElementShowing(assert, 'ef-tell-us-more');
+
+  await sleep(100);
+  await clickPanelElement(assert, 'video-broken');
+  await clickPanelElement(assert, 'tell-us-more-submit');
+
+  await sleep(100);
+  await panelAssertElementShowing(assert, 'ef-tell-us-more-detail');
+
+  await clickPanelElement(assert, 'tell-us-more-detail-submit');
+  await sleep(100);
+
+  assert.ok(!panel.isShowing);
 
   const pluginBrick = doc.getElementById('plugins-notification-icon');
   pluginBrick.click();
   await sleep(100);
 
-  const ctpNotification = doc.getElementById('click-to-play-plugins-notification');
+  let ctpNotification = doc.getElementById('click-to-play-plugins-notification');
   const link = doc.getAnonymousElementByAttribute(ctpNotification,
                                                   'anonid',
                                                   'click-to-play-plugins-notification-link');
@@ -90,19 +167,61 @@ async function testWorkflows(assert) {
   link.click();
 
   await sleep(100);
-  await panelAssert(assert, '!document.getElementById("ef-tell-us-more").hidden');
+  await panelAssertElementShowing(assert, 'ef-tell-us-more');
 
-  await panelScript(assert, 'document.getElementById("video-broken").click()');
-  await panelScript(assert, 'document.getElementById("tell-us-more-submit").click()');
+  await clickPanelElement(assert, 'video-broken');
+  await clickPanelElement(assert, 'tell-us-more-submit');
 
   await sleep(100);
-  await panelAssert(assert, '!document.getElementById("ef-tell-us-more-detail").hidden');
+  await panelAssertElementShowing(assert, 'ef-tell-us-more-detail');
+
+  await clickPanelElement(assert, 'tell-us-more-detail-submit');
+  await sleep(100);
+
+  assert.ok(!panel.isShowing);
+  ctpNotification = doc.getElementById('click-to-play-plugins-notification');
+  const allowNow = doc.getAnonymousElementByAttribute(ctpNotification,
+                                                      'anonid',
+                                                      'secondarybutton');
+  allowNow.click();
+
+  await sleep(100);
+  await panelAssertElementShowing(assert, 'ef-has-activating-solved');
+
+  config.tellUsMoreAfterHasThisSolvedTimeout = 0;
+  storeSeenHost(chromeGlobal, false);
+  await clickPanelElement(assert, 'has-activating-solved-yes');
+  await sleep(100);
+
+  await panelAssertElementShowing(assert, 'ef-tell-us-more');
+  await clickPanelElement(assert, 'video-broken');
+  await clickPanelElement(assert, 'tell-us-more-submit');
+
+  await sleep(100);
+  await panelAssertElementShowing(assert, 'ef-tell-us-more-detail');
+
+  await clickPanelElement(assert, 'tell-us-more-detail-submit');
+  await sleep(100);
+
+  assert.ok(!panel.isShowing);
+
+  await sleep(100);
+  pluginBrick.click();
+
+  await sleep(100);
+  ctpNotification = doc.getElementById('click-to-play-plugins-notification');
+  const blockPlugin = doc.getAnonymousElementByAttribute(ctpNotification,
+                                                         'anonid',
+                                                         'primarybutton');
+  blockPlugin.click();
+
+  await sleep(100);
+  await panelAssertElementShowing(assert, 'ef-has-deactivating-solved');
+
+  await clickPanelElement(assert, 'has-activating-solved-no');
+  await sleep(100);  
 
   tab.close();
-}
-
-exports['test workflows'] = function(assert, done) {
-  testWorkflows(assert).then(done);
-};
+});
 
 require('sdk/test').run(exports);
