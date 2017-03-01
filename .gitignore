@@ -1,6 +1,8 @@
 *.log
 *.update.rdf
 *.xpi
+*.sublime-project
+*.sublime-workspace
 .DS_Store
 coverage/
 deprecated/*

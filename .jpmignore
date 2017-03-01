@@ -6,6 +6,7 @@
 # allow basic things
 !/package.json
 !/icon.png
+!/chrome.manifest
 
 ## these node modules should ship
 !/node_modules/shield-studies-addon-utils/**

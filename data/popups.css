@@ -2,27 +2,27 @@ body {
   margin: 0;
 }
 
-.ef-view {
+.view {
   font-size: 1.1em;
   padding: 0px 12px;
   color: var(--arrowpanel-color);
 }
 
-.ef-radio-section {
+.radio-section {
   border: 1px solid hsla(210,4%,10%,.15);
   border-radius: 3.5px;
   padding: 8px;
 }
 
-.ef-radio-section > div:not(:last-child) {
+.radio-section > div:not(:last-child) {
   margin-bottom: 6px;
 }
 
-.ef-radio-section label {
+.radio-section label {
   padding-inline-start: 4px;
 }
 
-.ef-view textarea {
+.view textarea {
   width: 100%;
   box-sizing: border-box;
   height: 144px;
@@ -34,11 +34,11 @@ body {
   font-size: 1.0em;
 }
 
-.ef-view textarea::placeholder {
+.view textarea::placeholder {
   color: #ddd;
 }
 
-.ef-view textarea:focus {
+.view textarea:focus {
   box-shadow: inset 0 0 3px hsla(210,4%,10%,.25);
 }
 

@@ -1,11 +1,17 @@
 /* eslint-disable no-undef */
 
 addMessageListener("Browser:Reload", (msg) => {
-  sendAsyncMessage("EF:BrowserReload", "bob");
+  sendAsyncMessage("PluginSafety:BrowserReload");
 });
 
+addMessageListener("BrowserPlugins:NotificationShown", (msg) => {
+  sendAsyncMessage("PluginSafety:NotificationShown");
+});
+
+
+
 addMessageListener("BrowserPlugins:ActivatePlugins", (msg) => {
-  sendAsyncMessage("EF:BrowserActivatePlugins", msg.json);
+  sendAsyncMessage("PluginSafety:BrowserActivatePlugins", msg.json);
 });
 
 /* eslint-enable no-undef */

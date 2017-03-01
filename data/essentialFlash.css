@@ -1,10 +1,10 @@
-.ef-text-link {
+.ps-text-link {
   display: block;
   margin-top: 12px;
   color: -moz-nativehyperlinktext;
   cursor: pointer;
 }
 
-.ef-text-link:hover {
+.ps-text-link:hover {
   text-decoration: underline;
 }

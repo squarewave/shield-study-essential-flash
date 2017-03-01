@@ -8,10 +8,13 @@ const { browserWindows } = require('sdk/windows');
 const { when: onUnload } = require('sdk/system/unload');
 
 const { startServerAsync } = require('./httpd');
-const { panel, showView, config, storeSeenHost } = require('../lib/ui');
+const { panel, showView, config } = require('../lib/ui');
+const { storeSeenHost } = require('../lib/utils');
 
 // we can't use an anchor or else we'll get a warning
 config.useAnchor = false;
+
+let assert = null;
 
 var srv = startServerAsync(2000);
 onUnload(() => {
@@ -31,38 +34,44 @@ srv.registerPathHandler('/testFlashDoc', (req, res) => {
 `);
 });
 
-function panelAssert(assert, condition) {
-  panel.port.emit('run-test-script',
-    `{
-      let tmp = false;
-      try {
-        tmp = ${condition};
-      } catch (e) {
-      }
-      port.emit('test-output', tmp)
-    }`);
+let scriptId = 1;
+let initialized = false;
+const scriptPromises = new Map();
 
-  return new Promise(resolve => {
-    panel.port.once('test-output', val => {
-      assert.ok(val, condition);
-      resolve();
+function panelScript(arg, cb) {
+  if (!initialized) {
+    initialized = true;
+    panel.port.on('script-done', ({id, error, result, bob}) => {
+      let deferred = scriptPromises.get(id);
+      scriptPromises.delete(id);
+
+      if (error) {
+        deferred.reject(error);
+      } else {
+        deferred.resolve(result);
+      }
     });
+  }
+
+  const script = cb.toString();
+  const id = scriptId++;
+
+  const deferred = { script, arg };
+  deferred.promise = new Promise((resolve, reject) => {
+    deferred.resolve = resolve;
+    deferred.reject = reject;
   });
+
+  scriptPromises.set(id, deferred);
+
+  panel.port.emit('run-test-script', { script, id, arg });
+
+  return deferred.promise;
 }
 
-function panelScript(assert, script) {
-  panel.port.emit('run-test-script',
-    `try {
-      ${script}; port.emit("script-done", null);
-    } catch (e) {
-      port.emit("script-done", e.stack);
-    }`);
-  return new Promise(resolve => {
-    panel.port.once('script-done', (err) => {
-      assert.ok(!err, err || "no error");
-      resolve();
-    });
-  });
+async function panelAssert(arg, condition) {
+  const result = await panelScript(arg, condition);
+  assert.ok(result, condition.toString() + " (" + arg + ")");
 }
 
 function sleep(millis) {
@@ -73,19 +82,22 @@ function tabReady(tab) {
   return new Promise(resolve => tab.once('ready', resolve));
 }
 
-async function clickPanelElement(assert, id) {
-  await panelScript(assert, `document.getElementById('${id}').click()`);
+async function clickPanelElement(id) {
+  await panelScript(id, (id) => document.getElementById(id).click());
 }
 
-async function panelAssertElementShowing(assert, id) {
-  await panelAssert(assert, `!document.getElementById("${id}").hidden`);
+async function panelAssertElementShowing(id) {
+  await panelAssert(id, (id) => !document.getElementById(id).hidden);
 }
 
 function asyncTest(name, cb) {
-  exports[name] = (assert, done) => cb(assert).then(done);
+  exports[name] = (aAssert, done) => {
+    assert = aAssert;
+    cb(assert).then(done);
+  };
 }
 
-asyncTest("test about:addons", async function(assert) {
+asyncTest("test about:addons", async function() {
   const chromeGlobal = viewFor(browserWindows.activeWindow);
 
   chromeGlobal.openNewTabWith("about:addons");
@@ -96,7 +108,7 @@ asyncTest("test about:addons", async function(assert) {
   await sleep(100);
 });
 
-asyncTest("test showView", async function (assert) {
+asyncTest("test showView", async function () {
   const chromeGlobal = viewFor(browserWindows.activeWindow);
 
   const tab = await new Promise(resolve => tabs.open({
@@ -105,13 +117,13 @@ asyncTest("test showView", async function (assert) {
   }));
 
   await tabReady(tab);
-  panel.port.emit('run-test-script', 'port.emit("having-problems", "yes")');
+  await panelScript(null, () => port.emit('having-problems', 'yes'));
   await sleep(100);
-  await panelAssertElementShowing(assert, 'ef-tell-us-more');
+  await panelAssertElementShowing('tell-us-more');
 
-  panel.port.emit('run-test-script', 'port.emit("having-problems", "yes")');
+  await panelScript(null, () => port.emit('having-problems', 'yes'));
   await sleep(100);
-  await panelAssertElementShowing(assert, 'ef-tell-us-more');
+  await panelAssertElementShowing('tell-us-more');
 
   panel.hide();
   await sleep(100);
@@ -119,7 +131,7 @@ asyncTest("test showView", async function (assert) {
   tab.close();
 });
 
-asyncTest("test ui workflows", async function(assert) {
+asyncTest("test ui workflows", async function() {
   const chromeGlobal = viewFor(browserWindows.activeWindow);
   const doc = chromeGlobal.document;
 
@@ -132,27 +144,29 @@ asyncTest("test ui workflows", async function(assert) {
   chromeGlobal.BrowserReload();
 
   await tabReady(tab);
-  await panelAssertElementShowing(assert, 'ef-having-problems');
-  await clickPanelElement(assert, 'having-problems-no');
+  await sleep(100);
+  await panelAssertElementShowing('having-problems');
+  await clickPanelElement('having-problems-no');
   await sleep(100);
 
   storeSeenHost(chromeGlobal, false);
   chromeGlobal.BrowserReload();
 
   await tabReady(tab);
-  await panelAssertElementShowing(assert, 'ef-having-problems');
-  await clickPanelElement(assert, 'having-problems-yes');
+  await sleep(100);
+  await panelAssertElementShowing('having-problems');
+  await clickPanelElement('having-problems-yes');
 
-  await panelAssertElementShowing(assert, 'ef-tell-us-more');
+  await panelAssertElementShowing('tell-us-more');
 
   await sleep(100);
-  await clickPanelElement(assert, 'video-broken');
-  await clickPanelElement(assert, 'tell-us-more-submit');
+  await clickPanelElement('video-broken');
+  await clickPanelElement('tell-us-more-submit');
 
   await sleep(100);
-  await panelAssertElementShowing(assert, 'ef-tell-us-more-detail');
+  await panelAssertElementShowing('tell-us-more-detail');
 
-  await clickPanelElement(assert, 'tell-us-more-detail-submit');
+  await clickPanelElement('tell-us-more-detail-submit');
   await sleep(100);
 
   assert.ok(!panel.isShowing);
@@ -170,15 +184,15 @@ asyncTest("test ui workflows", async function(assert) {
   link.click();
 
   await sleep(100);
-  await panelAssertElementShowing(assert, 'ef-tell-us-more');
+  await panelAssertElementShowing('tell-us-more');
 
-  await clickPanelElement(assert, 'video-broken');
-  await clickPanelElement(assert, 'tell-us-more-submit');
+  await clickPanelElement('video-broken');
+  await clickPanelElement('tell-us-more-submit');
 
   await sleep(100);
-  await panelAssertElementShowing(assert, 'ef-tell-us-more-detail');
+  await panelAssertElementShowing('tell-us-more-detail');
 
-  await clickPanelElement(assert, 'tell-us-more-detail-submit');
+  await clickPanelElement('tell-us-more-detail-submit');
   await sleep(100);
 
   assert.ok(!panel.isShowing);
@@ -189,21 +203,21 @@ asyncTest("test ui workflows", async function(assert) {
   allowNow.click();
 
   await sleep(100);
-  await panelAssertElementShowing(assert, 'ef-has-activating-solved');
+  await panelAssertElementShowing('has-activating-solved');
 
   config.tellUsMoreAfterHasThisSolvedTimeout = 0;
   storeSeenHost(chromeGlobal, false);
-  await clickPanelElement(assert, 'has-activating-solved-yes');
+  await clickPanelElement('has-activating-solved-yes');
   await sleep(100);
 
-  await panelAssertElementShowing(assert, 'ef-tell-us-more');
-  await clickPanelElement(assert, 'video-broken');
-  await clickPanelElement(assert, 'tell-us-more-submit');
+  await panelAssertElementShowing('tell-us-more');
+  await clickPanelElement('video-broken');
+  await clickPanelElement('tell-us-more-submit');
 
   await sleep(100);
-  await panelAssertElementShowing(assert, 'ef-tell-us-more-detail');
+  await panelAssertElementShowing('tell-us-more-detail');
 
-  await clickPanelElement(assert, 'tell-us-more-detail-submit');
+  await clickPanelElement('tell-us-more-detail-submit');
   await sleep(100);
 
   assert.ok(!panel.isShowing);
@@ -231,10 +245,10 @@ asyncTest("test ui workflows", async function(assert) {
   blockPlugin.click();
 
   await sleep(100);
-  await panelAssertElementShowing(assert, 'ef-has-deactivating-solved');
+  await panelAssertElementShowing('has-deactivating-solved');
 
-  await clickPanelElement(assert, 'has-activating-solved-no');
-  await sleep(100);  
+  await clickPanelElement('has-activating-solved-no');
+  await sleep(100);
 
   tab.close();
 });

@@ -38,11 +38,21 @@ window.onload = () => {
       showing.hidden = true;
     }
 
-    showing = document.getElementById("ef-" + name);
+    showing = document.getElementById(name);
     showing.hidden = false;
   });
 };
 
-port.on("run-test-script", (script) => {
-  eval(script);
+port.on("run-test-script", ({script, id, arg}) => {
+  const runnableStr = `(() => {
+    return (${script});
+  })();`;
+
+  try {
+    const runnable = eval(runnableStr);
+    const result = runnable.call(this, arg);
+    port.emit("script-done", { id, result });
+  } catch (e) {
+    port.emit("script-done", { id, error: e.toString() });
+  }
 });
