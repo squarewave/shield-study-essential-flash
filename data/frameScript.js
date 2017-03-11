@@ -6,8 +6,21 @@ Cu.import("resource://gre/modules/NetUtil.jsm");
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/Task.jsm");
 Cu.import("resource://gre/modules/Timer.jsm");
+Cu.import("resource://gre/modules/PrivateBrowsingUtils.jsm");
 
 const uuidGenerator = Cc["@mozilla.org/uuid-generator;1"].getService(Ci.nsIUUIDGenerator);
+
+const {
+  ALLOW_ACTION,
+  DENY_ACTION,
+} = Ci.nsIPermissionManager;
+
+const {
+  PLUGIN_ACTIVE,
+  PLUGIN_ALTERNATE,
+  PLUGIN_SUPPRESSED,
+  PLUGIN_CLICK_TO_PLAY,
+} = Ci.nsIObjectLoadingContent;
 
 const FLASH_MIME_TYPE = "application/x-shockwave-flash";
 
@@ -25,6 +38,10 @@ addMessageListener("BrowserPlugins:NotificationShown", (msg) => {
 addMessageListener("BrowserPlugins:ActivatePlugins", (msg) => {
   sendAsyncMessage("PluginSafety:BrowserActivatePlugins", msg.json);
 });
+
+function dumpError(e) {
+  sendAsyncMessage("PluginSafety:BrowserEventRelay", { error: e.toString() + "\n" + e.stack });
+}
 
 function getCtaSetting(href) {
   const uri = NetUtil.newURI(href);
@@ -50,41 +67,6 @@ function getCtaSetting(href) {
 
 function getDocumentHost(doc) {
   return NetUtil.newURI(doc.documentURI).prePath;
-}
-
-function getPluginUI(plugin, anonid) {
-  return plugin.ownerDocument
-    .getAnonymousElementByAttribute(plugin, "anonid", anonid);
-}
-
-function getBindingType(plugin) {
-  if (!(plugin instanceof Ci.nsIObjectLoadingContent))
-    return null;
-
-  switch (plugin.pluginFallbackType) {
-    case Ci.nsIObjectLoadingContent.PLUGIN_UNSUPPORTED:
-      return "PluginNotFound";
-    case Ci.nsIObjectLoadingContent.PLUGIN_DISABLED:
-      return "PluginDisabled";
-    case Ci.nsIObjectLoadingContent.PLUGIN_BLOCKLISTED:
-      return "PluginBlocklisted";
-    case Ci.nsIObjectLoadingContent.PLUGIN_OUTDATED:
-      return "PluginOutdated";
-    case Ci.nsIObjectLoadingContent.PLUGIN_CLICK_TO_PLAY:
-      return "PluginClickToPlay";
-    case Ci.nsIObjectLoadingContent.PLUGIN_VULNERABLE_UPDATABLE:
-      return "PluginVulnerableUpdatable";
-    case Ci.nsIObjectLoadingContent.PLUGIN_VULNERABLE_NO_UPDATE:
-      return "PluginVulnerableNoUpdate";
-    default:
-      // Not all states map to a handler
-      return null;
-  }
-}
-
-function isKnownPlugin(objLoadingContent) {
-  return (objLoadingContent.getContentTypeForMIMEType(objLoadingContent.actualType) ==
-          Ci.nsIObjectLoadingContent.TYPE_PLUGIN);
 }
 
 function getPluginInfo(pluginElement) {
@@ -146,6 +128,112 @@ function getPluginInfo(pluginElement) {
   };
 }
 
+function getPluginUI(plugin, anonid) {
+  return plugin.ownerDocument
+    .getAnonymousElementByAttribute(plugin, "anonid", anonid);
+}
+
+function getProperty(name, plugin) {
+  if (plugin[name]) {
+    return plugin[name];
+  }
+  const embeds = plugin.getElementsByTagName('embed');
+  if (embeds.length >= 1) {
+    return embeds[0][name];
+  }
+  const objs = plugin.getElementsByTagName('object');
+  if (objs.length >= 1) {
+    return objs[0][name];
+  }
+
+  return null;
+}
+
+function getBindingType(plugin) {
+  if (!(plugin instanceof Ci.nsIObjectLoadingContent))
+    return null;
+
+  switch (plugin.pluginFallbackType) {
+    case Ci.nsIObjectLoadingContent.PLUGIN_UNSUPPORTED:
+      return "PluginNotFound";
+    case Ci.nsIObjectLoadingContent.PLUGIN_DISABLED:
+      return "PluginDisabled";
+    case Ci.nsIObjectLoadingContent.PLUGIN_BLOCKLISTED:
+      return "PluginBlocklisted";
+    case Ci.nsIObjectLoadingContent.PLUGIN_OUTDATED:
+      return "PluginOutdated";
+    case Ci.nsIObjectLoadingContent.PLUGIN_CLICK_TO_PLAY:
+      return "PluginClickToPlay";
+    case Ci.nsIObjectLoadingContent.PLUGIN_VULNERABLE_UPDATABLE:
+      return "PluginVulnerableUpdatable";
+    case Ci.nsIObjectLoadingContent.PLUGIN_VULNERABLE_NO_UPDATE:
+      return "PluginVulnerableNoUpdate";
+    default:
+      // Not all states map to a handler
+      return null;
+  }
+}
+
+function isKnownPlugin(objLoadingContent) {
+  return (objLoadingContent.getContentTypeForMIMEType(objLoadingContent.actualType) ==
+          Ci.nsIObjectLoadingContent.TYPE_PLUGIN);
+}
+
+function shouldShowOverlay(plugin) {
+  let overlay = getPluginUI(plugin, "main");
+
+  if (!overlay) {
+    return false;
+  }
+
+  // If the overlay size is 0, we haven't done layout yet. Presume that
+  // plugins are visible until we know otherwise.
+  if (overlay.scrollWidth == 0) {
+    return true;
+  }
+
+  // Is the <object>'s size too small to hold what we want to show?
+  let pluginRect = plugin.getBoundingClientRect();
+  // XXX bug 446693. The text-shadow on the submitted-report text at
+  //     the bottom causes scrollHeight to be larger than it should be.
+  let overflows = (overlay.scrollWidth > Math.ceil(pluginRect.width)) ||
+                  (overlay.scrollHeight - 5 > Math.ceil(pluginRect.height));
+  if (overflows) {
+    return false;
+  }
+
+  // Is the plugin covered up by other content so that it is not clickable?
+  // Floating point can confuse .elementFromPoint, so inset just a bit
+  let left = pluginRect.left + 2;
+  let right = pluginRect.right - 2;
+  let top = pluginRect.top + 2;
+  let bottom = pluginRect.bottom - 2;
+  let centerX = left + (right - left) / 2;
+  let centerY = top + (bottom - top) / 2;
+  let points = [[left, top],
+                 [left, bottom],
+                 [right, top],
+                 [right, bottom],
+                 [centerX, centerY]];
+
+  if (right <= 0 || top <= 0) {
+    return false;
+  }
+
+  let contentWindow = plugin.ownerGlobal;
+  let cwu = contentWindow.QueryInterface(Ci.nsIInterfaceRequestor)
+                         .getInterface(Ci.nsIDOMWindowUtils);
+
+  for (let [x, y] of points) {
+    let el = cwu.elementFromPoint(x, y, true, true);
+    if (el !== plugin) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function getWindowID(win) {
   if (win.__pluginSafetyWindowID) {
     return win.__pluginSafetyWindowID;
@@ -205,79 +293,150 @@ function* handlePageShow(event) {
       payload.docObj.is3rdParty = getDocumentHost(doc) != getDocumentHost(win.top.document);
     }
 
+    if (doc.documentFlashClassification != "allow") {
+      if (doc.readyState == "complete") {
+        Task.spawn(handleUnallowedPageLoading(event));
+      } else {
+        doc.addEventListener("DOMContentLoaded", listener);
+      }
+    }
+
     sendAsyncMessage("PluginSafety:BrowserEventRelay", payload);
   } catch (e) {
-    sendAsyncMessage("PluginSafety:BrowserEventRelay", { error: e.toString() });
+    dumpError(e);
+  }
+}
+
+function getPluginClassificationStr(plugin, pluginInfo) {
+  switch (pluginInfo.fallbackType) {
+    case PLUGIN_ACTIVE: return "allowed";
+    case PLUGIN_SUPPRESSED: return "denied";
+    case PLUGIN_ALTERNATE: return "fallback-used";
+    case PLUGIN_CLICK_TO_PLAY:
+      if (shouldShowOverlay(plugin)) {
+        return "ctp-overlay";
+      } else {
+        // NOTE: this isn't _quite_ correct, since if there are any other overlay
+        // elements on the page, a bar still will not be shown. However, it's more
+        // correct than returning 'ctp-overlay', and we should be able to deduce
+        // whether a bar was actually shown by checking if there were any
+        // ctp-overlay's in the doc.
+        return "ctp-bar";
+      }
+  }
+
+  return null;
+}
+
+function* handleUnallowedPageLoading(event) {
+  try {
+    let doc = event.target;
+    let win = doc.defaultView.self;
+
+    let cwu = win.QueryInterface(Ci.nsIInterfaceRequestor)
+              .getInterface(Ci.nsIDOMWindowUtils);
+
+    for (const plugin of cwu.plugins) {
+      const pluginInfo = getPluginInfo(plugin);
+
+      if (pluginInfo && pluginInfo.mimetype == 'application/x-shockwave-flash') {
+        const classification = getPluginClassificationStr(plugin, pluginInfo);
+
+        // allow the other cases to be handled by handlePluginEvent, which has the
+        // advantage of being able to handle plugins loaded after page load.
+        if (classification == "denied" || classification == "fallback-used") {
+          const srcURI = getProperty('srcURI', plugin);
+          const width = getProperty('width', plugin);
+          const height = getProperty('height', plugin);
+
+          const flashObj = {
+            path: srcURI ? srcURI.spec : null,
+            classification: classification,
+            is3rdParty: srcURI && srcURI.prePath != getDocumentHost(win.top.document),
+            width: width ? parseInt(width) : null,
+            height: height ? parseInt(height) : null,
+            clickedOnOverlay: false,
+          };
+
+          const payload = {
+            type: "PluginFound",
+            windowID: yield getWindowID(win),
+            docURI: doc.documentURI,
+            flashObj
+          };
+
+          sendAsyncMessage("PluginSafety:BrowserEventRelay", payload);
+        }
+      }
+    }
+  } catch (e) {
+    dumpError(e);
   }
 }
 
 function* handlePluginEvent(event) {
   try {
-    let plugin = event.target;
     let eventType = event.type;
-
-    // The plugin binding fires this event when it is created.
-    // As an untrusted event, ensure that this object actually has a binding
-    // and make sure we don't handle it twice
-    let overlay = getPluginUI(plugin, "main");
-
-
-    if (eventType == "PluginBindingAttached") {
-      if (!overlay || overlay._pluginSafetyBindingHandled) {
-        return;
-      }
-      overlay._pluginSafetyBindingHandled = true;
-
-      overlay.__pluginSafetyPluginID = uuidGenerator.generateUUID().toString();
-      overlay.addEventListener("click", listener, true);
-
-      // Lookup the handler for this binding
-      eventType = getBindingType(plugin);
-      if (!eventType) {
-        // Not all bindings have handlers
-        return;
-      }
-    }
+    let plugin = event.target;
 
     let doc = event.target.ownerDocument;
     let win = doc.defaultView;
 
+    if (eventType == "PluginBindingAttached") {
+      let overlay = getPluginUI(plugin, "main");
+
+      if (!overlay || overlay._pluginSafetyBindingHandled) {
+        return;
+      }
+      overlay._pluginSafetyBindingHandled = true;
+    }
+
+    const pluginInfo = getPluginInfo(plugin);
+
+    const srcURI = getProperty('srcURI', plugin);
+    const width = getProperty('width', plugin);
+    const height = getProperty('height', plugin);
+
     const flashObj = {
-      path: plugin.srcURI.spec,
-      classification: null, // TODO
-      is3rdParty: plugin.srcURI.prePath != getDocumentHost(win.top.document),
-      width: parseInt(plugin.width),
-      height: parseInt(plugin.height),
-      clickedOnOverlay: false, // TODO
+      path: srcURI ? srcURI.spec : null,
+      classification: getPluginClassificationStr(plugin, pluginInfo),
+      is3rdParty: srcURI && srcURI.prePath != getDocumentHost(win.top.document),
+      width: width ? parseInt(width) : null,
+      height: height ? parseInt(height) : null,
+      clickedOnOverlay: false,
     };
 
     const payload = {
-      type: eventType,
+      type: "PluginFound",
       windowID: yield getWindowID(win),
       docURI: doc.documentURI,
-      pluginInfo: getPluginInfo(plugin),
       flashObj
     };
 
     sendAsyncMessage("PluginSafety:BrowserEventRelay", payload);
   } catch (e) {
-    sendAsyncMessage("PluginSafety:BrowserEventRelay", { error: e.toString() });
+    dumpError(e);
   }
 }
 
 const listener = {
   handleEvent(event) {
+    if (PrivateBrowsingUtils.isContentWindowPrivate(event.target.ownerGlobal)) {
+      // don't log anything for private sessions. Hooray respecting people!
+      return;
+    }
+
     Task.spawn(function*() {
       switch (event.type) {
         case "pageshow":
           yield* handlePageShow(event);
           break;
-        case "PluginInstantiated":
         case "PluginBindingAttached":
+        case "PluginInstantiated":
           yield* handlePluginEvent(event);
           break;
-        case "click":
-          handlePluginClickEvent(event);
+        case "DOMContentLoaded":
+          yield* handleUnallowedPageLoading(event);
           break;
       }
     });
