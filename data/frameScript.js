@@ -240,7 +240,7 @@ function* handlePageShow(event) {
       is3rdParty: false,
       userAction: [],
       ctpVia: null,
-      docshellId: doc.docShell.historyID,
+      docshellId: doc.docShell.historyID.toString(),
       'user-feedback': null,
       flashObjs: null,
       subDocs: []
