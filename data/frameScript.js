@@ -56,7 +56,6 @@ function getCtaSetting(href) {
         } else {
           return "allow-and-remember";
         }
-        break;
       case DENY_ACTION:
         return "never-allow";
     }
@@ -149,31 +148,6 @@ function getProperty(name, plugin) {
   return null;
 }
 
-function getBindingType(plugin) {
-  if (!(plugin instanceof Ci.nsIObjectLoadingContent))
-    return null;
-
-  switch (plugin.pluginFallbackType) {
-    case Ci.nsIObjectLoadingContent.PLUGIN_UNSUPPORTED:
-      return "PluginNotFound";
-    case Ci.nsIObjectLoadingContent.PLUGIN_DISABLED:
-      return "PluginDisabled";
-    case Ci.nsIObjectLoadingContent.PLUGIN_BLOCKLISTED:
-      return "PluginBlocklisted";
-    case Ci.nsIObjectLoadingContent.PLUGIN_OUTDATED:
-      return "PluginOutdated";
-    case Ci.nsIObjectLoadingContent.PLUGIN_CLICK_TO_PLAY:
-      return "PluginClickToPlay";
-    case Ci.nsIObjectLoadingContent.PLUGIN_VULNERABLE_UPDATABLE:
-      return "PluginVulnerableUpdatable";
-    case Ci.nsIObjectLoadingContent.PLUGIN_VULNERABLE_NO_UPDATE:
-      return "PluginVulnerableNoUpdate";
-    default:
-      // Not all states map to a handler
-      return null;
-  }
-}
-
 function isKnownPlugin(objLoadingContent) {
   return (objLoadingContent.getContentTypeForMIMEType(objLoadingContent.actualType) ==
           Ci.nsIObjectLoadingContent.TYPE_PLUGIN);
@@ -250,7 +224,6 @@ function getWindowID(win) {
       }
     }, PROMISE_MAP_TIMEOUT);
   });
-  return win.__pluginSafetyWindowID = uuidGenerator.generateUUID().toString();
 }
 
 function* handlePageShow(event) {
@@ -261,7 +234,7 @@ function* handlePageShow(event) {
     win.__pluginSafetyWindowID = uuidGenerator.generateUUID().toString();
 
     const docObj = {
-      host: NetUtil.newURI(doc.documentURI).prePath,
+      host: getDocumentHost(doc),
       ctaSetting: getCtaSetting(doc.documentURI),
       flashClassification: doc.documentFlashClassification,
       is3rdParty: false,
@@ -376,14 +349,14 @@ function* handleUnallowedPageLoading(event) {
 
 function* handlePluginEvent(event) {
   try {
-    let eventType = event.type;
-    let plugin = event.target;
+    const eventType = event.type;
+    const plugin = event.target;
 
-    let doc = event.target.ownerDocument;
-    let win = doc.defaultView;
+    const doc = event.target.ownerDocument;
+    const win = doc.defaultView;
 
     if (eventType == "PluginBindingAttached") {
-      let overlay = getPluginUI(plugin, "main");
+      const overlay = getPluginUI(plugin, "main");
 
       if (!overlay || overlay._pluginSafetyBindingHandled) {
         return;
@@ -400,7 +373,7 @@ function* handlePluginEvent(event) {
     const flashObj = {
       path: srcURI ? srcURI.spec : null,
       classification: getPluginClassificationStr(plugin, pluginInfo),
-      is3rdParty: srcURI && srcURI.prePath != getDocumentHost(win.top.document),
+      is3rdParty: srcURI ? srcURI.prePath != getDocumentHost(win.top.document) : false,
       width: width ? parseInt(width) : null,
       height: height ? parseInt(height) : null,
       clickedOnOverlay: false,
@@ -449,4 +422,3 @@ addEventListener("PluginInstantiated", listener, true, true);
 addEventListener("pageshow", listener, true);
 
 /* eslint-enable no-undef */
-
