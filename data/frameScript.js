@@ -2,13 +2,13 @@
 
 const { interfaces: Ci, classes: Cc, utils: Cu } = Components;
 
-Cu.import("resource://gre/modules/NetUtil.jsm");
-Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("resource://gre/modules/Task.jsm");
-Cu.import("resource://gre/modules/Timer.jsm");
-Cu.import("resource://gre/modules/PrivateBrowsingUtils.jsm");
+Cu.import('resource://gre/modules/NetUtil.jsm');
+Cu.import('resource://gre/modules/Services.jsm');
+Cu.import('resource://gre/modules/Task.jsm');
+Cu.import('resource://gre/modules/Timer.jsm');
+Cu.import('resource://gre/modules/PrivateBrowsingUtils.jsm');
 
-const uuidGenerator = Cc["@mozilla.org/uuid-generator;1"].getService(Ci.nsIUUIDGenerator);
+const uuidGenerator = Cc['@mozilla.org/uuid-generator;1'].getService(Ci.nsIUUIDGenerator);
 
 const {
   ALLOW_ACTION,
@@ -22,25 +22,25 @@ const {
   PLUGIN_CLICK_TO_PLAY,
 } = Ci.nsIObjectLoadingContent;
 
-const FLASH_MIME_TYPE = "application/x-shockwave-flash";
+const FLASH_MIME_TYPE = 'application/x-shockwave-flash';
 
 const PROMISE_MAP_TIMEOUT = 2000;
 const promiseMap = new Map();
 
-addMessageListener("Browser:Reload", (msg) => {
-  sendAsyncMessage("PluginSafety:BrowserReload");
+addMessageListener('Browser:Reload', (msg) => {
+  sendAsyncMessage('PluginSafety:BrowserReload');
 });
 
-addMessageListener("BrowserPlugins:NotificationShown", (msg) => {
-  sendAsyncMessage("PluginSafety:NotificationShown");
+addMessageListener('BrowserPlugins:NotificationShown', (msg) => {
+  sendAsyncMessage('PluginSafety:NotificationShown');
 });
 
-addMessageListener("BrowserPlugins:ActivatePlugins", (msg) => {
-  sendAsyncMessage("PluginSafety:BrowserActivatePlugins", msg.json);
+addMessageListener('BrowserPlugins:ActivatePlugins', (msg) => {
+  sendAsyncMessage('PluginSafety:BrowserActivatePlugins', msg.json);
 });
 
 function dumpError(e) {
-  sendAsyncMessage("PluginSafety:BrowserEventRelay", { error: e.toString() + "\n" + e.stack });
+  sendAsyncMessage('PluginSafety:BrowserEventRelay', { error: e.toString() + '\n' + e.stack });
 }
 
 function getCtaSetting(href) {
@@ -52,16 +52,16 @@ function getCtaSetting(href) {
     switch (permObj.capability){
       case ALLOW_ACTION:
         if (permObj.expireType == EXPIRE_SESSION) {
-          return "allow";
+          return 'allow';
         } else {
-          return "allow-and-remember";
+          return 'allow-and-remember';
         }
       case DENY_ACTION:
-        return "never-allow";
+        return 'never-allow';
     }
   }
 
-  return "default";
+  return 'default';
 }
 
 function getDocumentHost(doc) {
@@ -70,66 +70,32 @@ function getDocumentHost(doc) {
 
 function getPluginInfo(pluginElement) {
   if (pluginElement instanceof Ci.nsIDOMHTMLAnchorElement) {
-    // Anchor elements are our place holders, and we only have them for Flash
-    let pluginHost = Cc["@mozilla.org/plugin/host;1"].getService(Ci.nsIPluginHost);
     return {
-      pluginName: "Shockwave Flash",
       mimetype: FLASH_MIME_TYPE,
-      permissionString: pluginHost.getPermissionStringForType(FLASH_MIME_TYPE)
     };
   }
-  let pluginHost = Cc["@mozilla.org/plugin/host;1"].getService(Ci.nsIPluginHost);
-  pluginElement.QueryInterface(Ci.nsIObjectLoadingContent);
 
-  let tagMimetype;
-  let pluginName = "unknown";
-  let pluginTag = null;
-  let permissionString = null;
+  let mimetype;
   let fallbackType = null;
-  let blocklistState = null;
 
-  tagMimetype = pluginElement.actualType;
-  if (tagMimetype == "") {
-    tagMimetype = pluginElement.type;
+  mimetype = pluginElement.actualType;
+  if (!mimetype) {
+    mimetype = pluginElement.type;
   }
 
   if (isKnownPlugin(pluginElement)) {
-    pluginTag = pluginHost.getPluginTagForType(pluginElement.actualType);
-    pluginName = pluginTag.name;
-
-    // Convert this from nsIPluginTag so it can be serialized.
-    let properties = ["name", "description", "filename", "version", "enabledState", "niceName"];
-    let pluginTagCopy = {};
-    for (let prop of properties) {
-      pluginTagCopy[prop] = pluginTag[prop];
-    }
-    pluginTag = pluginTagCopy;
-
-    permissionString = pluginHost.getPermissionStringForType(pluginElement.actualType);
     fallbackType = pluginElement.defaultFallbackType;
-    blocklistState = pluginHost.getBlocklistStateForType(pluginElement.actualType);
-    // Make state-softblocked == state-notblocked for our purposes,
-    // they have the same UI. STATE_OUTDATED should not exist for plugin
-    // items, but let's alias it anyway, just in case.
-    if (blocklistState == Ci.nsIBlocklistService.STATE_SOFTBLOCKED ||
-        blocklistState == Ci.nsIBlocklistService.STATE_OUTDATED) {
-      blocklistState = Ci.nsIBlocklistService.STATE_NOT_BLOCKED;
-    }
   }
 
   return {
-    mimetype: tagMimetype,
-    pluginName,
-    pluginTag,
-    permissionString,
+    mimetype,
     fallbackType,
-    blocklistState,
   };
 }
 
 function getPluginUI(plugin, anonid) {
   return plugin.ownerDocument
-    .getAnonymousElementByAttribute(plugin, "anonid", anonid);
+    .getAnonymousElementByAttribute(plugin, 'anonid', anonid);
 }
 
 function getProperty(name, plugin) {
@@ -154,7 +120,7 @@ function isKnownPlugin(objLoadingContent) {
 }
 
 function shouldShowOverlay(plugin) {
-  let overlay = getPluginUI(plugin, "main");
+  let overlay = getPluginUI(plugin, 'main');
 
   if (!overlay) {
     return false;
@@ -220,13 +186,13 @@ function getWindowID(win) {
     promiseMap.set(docURI, promises);
     setTimeout(() => {
       if (promiseMap.delete(docURI)) {
-        reject("No window ID created for document " + docURI);
+        reject('No window ID created for document ' + docURI);
       }
     }, PROMISE_MAP_TIMEOUT);
   });
 }
 
-function* handlePageShow(event) {
+const handlePageShow = Task.async(function* (event) {
   try {
     let doc = event.target;
     let win = doc.defaultView.self;
@@ -266,42 +232,42 @@ function* handlePageShow(event) {
       payload.docObj.is3rdParty = getDocumentHost(doc) != getDocumentHost(win.top.document);
     }
 
-    if (doc.documentFlashClassification != "allow") {
-      if (doc.readyState == "complete") {
+    if (doc.documentFlashClassification != 'allow') {
+      if (doc.readyState == 'complete') {
         Task.spawn(handleUnallowedPageLoading(event));
       } else {
-        doc.addEventListener("DOMContentLoaded", listener);
+        doc.addEventListener('DOMContentLoaded', listener);
       }
     }
 
-    sendAsyncMessage("PluginSafety:BrowserEventRelay", payload);
+    sendAsyncMessage('PluginSafety:BrowserEventRelay', payload);
   } catch (e) {
     dumpError(e);
   }
-}
+});
 
 function getPluginClassificationStr(plugin, pluginInfo) {
   switch (pluginInfo.fallbackType) {
-    case PLUGIN_ACTIVE: return "allowed";
-    case PLUGIN_SUPPRESSED: return "denied";
-    case PLUGIN_ALTERNATE: return "fallback-used";
-    case PLUGIN_CLICK_TO_PLAY:
-      if (shouldShowOverlay(plugin)) {
-        return "ctp-overlay";
-      } else {
-        // NOTE: this isn't _quite_ correct, since if there are any other overlay
-        // elements on the page, a bar still will not be shown. However, it's more
-        // correct than returning 'ctp-overlay', and we should be able to deduce
-        // whether a bar was actually shown by checking if there were any
-        // ctp-overlay's in the doc.
-        return "ctp-bar";
-      }
+  case PLUGIN_ACTIVE: return 'allowed';
+  case PLUGIN_SUPPRESSED: return 'denied';
+  case PLUGIN_ALTERNATE: return 'fallback-used';
+  case PLUGIN_CLICK_TO_PLAY:
+    if (shouldShowOverlay(plugin)) {
+      return 'ctp-overlay';
+    } else {
+      // NOTE: this isn't _quite_ correct, since if there are any other overlay
+      // elements on the page, a bar still will not be shown. However, it's more
+      // correct than returning 'ctp-overlay', and we should be able to deduce
+      // whether a bar was actually shown by checking if there were any
+      // ctp-overlay's in the doc.
+      return 'ctp-bar';
+    }
   }
 
   return null;
 }
 
-function* handleUnallowedPageLoading(event) {
+const handleUnallowedPageLoading = Task.async(function* (event) {
   try {
     let doc = event.target;
     let win = doc.defaultView.self;
@@ -317,7 +283,7 @@ function* handleUnallowedPageLoading(event) {
 
         // allow the other cases to be handled by handlePluginEvent, which has the
         // advantage of being able to handle plugins loaded after page load.
-        if (classification == "denied" || classification == "fallback-used") {
+        if (classification == 'denied' || classification == 'fallback-used') {
           const srcURI = getProperty('srcURI', plugin);
           const width = getProperty('width', plugin);
           const height = getProperty('height', plugin);
@@ -332,22 +298,22 @@ function* handleUnallowedPageLoading(event) {
           };
 
           const payload = {
-            type: "PluginFound",
+            type: 'PluginFound',
             windowID: yield getWindowID(win),
             docURI: doc.documentURI,
             flashObj
           };
 
-          sendAsyncMessage("PluginSafety:BrowserEventRelay", payload);
+          sendAsyncMessage('PluginSafety:BrowserEventRelay', payload);
         }
       }
     }
   } catch (e) {
     dumpError(e);
   }
-}
+});
 
-function* handlePluginEvent(event) {
+const handlePluginEvent = Task.async(function* (event) {
   try {
     const eventType = event.type;
     const plugin = event.target;
@@ -356,8 +322,8 @@ function* handlePluginEvent(event) {
     const win = doc.defaultView;
 
     let overlayId = null;
-    if (eventType == "PluginBindingAttached") {
-      const overlay = getPluginUI(plugin, "main");
+    if (eventType == 'PluginBindingAttached') {
+      const overlay = getPluginUI(plugin, 'main');
 
       if (!overlay || overlay._pluginSafetyBindingHandled) {
         return;
@@ -392,18 +358,18 @@ function* handlePluginEvent(event) {
     };
 
     const payload = {
-      type: "PluginFound",
+      type: 'PluginFound',
       windowID: yield getWindowID(win),
       docURI: doc.documentURI,
       overlayId,
       flashObj
     };
 
-    sendAsyncMessage("PluginSafety:BrowserEventRelay", payload);
+    sendAsyncMessage('PluginSafety:BrowserEventRelay', payload);
   } catch (e) {
     dumpError(e);
   }
-}
+});
 
 const listener = {
   handleEvent(event) {
@@ -412,26 +378,24 @@ const listener = {
       return;
     }
 
-    Task.spawn(function*() {
-      switch (event.type) {
-        case "pageshow":
-          yield* handlePageShow(event);
-          break;
-        case "PluginBindingAttached":
-        case "PluginInstantiated":
-          yield* handlePluginEvent(event);
-          break;
-        case "DOMContentLoaded":
-          yield* handleUnallowedPageLoading(event);
-          break;
-      }
-    });
+    switch (event.type) {
+    case 'pageshow':
+      handlePageShow(event);
+      break;
+    case 'PluginBindingAttached':
+    case 'PluginInstantiated':
+      handlePluginEvent(event);
+      break;
+    case 'DOMContentLoaded':
+      handleUnallowedPageLoading(event);
+      break;
+    }
   }
 };
 
 
-addEventListener("PluginBindingAttached", listener, true, true);
-addEventListener("PluginInstantiated", listener, true, true);
-addEventListener("pageshow", listener, true);
+addEventListener('PluginBindingAttached', listener, true, true);
+addEventListener('PluginInstantiated', listener, true, true);
+addEventListener('pageshow', listener, true);
 
 /* eslint-enable no-undef */
