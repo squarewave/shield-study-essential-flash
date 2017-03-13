@@ -355,6 +355,7 @@ function* handlePluginEvent(event) {
     const doc = event.target.ownerDocument;
     const win = doc.defaultView;
 
+    let overlayId = null;
     if (eventType == "PluginBindingAttached") {
       const overlay = getPluginUI(plugin, "main");
 
@@ -362,6 +363,17 @@ function* handlePluginEvent(event) {
         return;
       }
       overlay._pluginSafetyBindingHandled = true;
+
+      overlayId = uuidGenerator.generateUUID().toString();
+      overlay._pluginSafetyOverlayId = overlayId;
+
+      const overlayClickedEvent = {
+        type: 'OverlayClicked',
+        overlayId
+      };
+      overlay.addEventListener('click', (e) => {
+        sendAsyncMessage('PluginSafety:BrowserEventRelay', overlayClickedEvent);
+      }, true);
     }
 
     const pluginInfo = getPluginInfo(plugin);
@@ -383,6 +395,7 @@ function* handlePluginEvent(event) {
       type: "PluginFound",
       windowID: yield getWindowID(win),
       docURI: doc.documentURI,
+      overlayId,
       flashObj
     };
 
