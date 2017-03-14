@@ -37,7 +37,7 @@ the following payload using an external telemetry ping:
                 "is3rdParty": false,
                 "userAction": ["allow", "allow-and-remember", "deny", "page-refreshed", "feedback-given"],
                 "ctpVia": "notificationbar | overlay | urlbar-icon | null",
-                "docshellId": 1234,
+                "docshellId": "{1234-abcd-...}",
 
                 "user-feedback": {
                     choice: "broken-video | broken-audio | etc..",
