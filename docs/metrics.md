@@ -21,7 +21,6 @@ the following payload using an external telemetry ping:
 ```js
     payload = {
         "clientID": 123,
-        "mainPing": 123,
         "locale": "en-US",
         "geo": "US",
         "flashVersion": "123.45-x86",
