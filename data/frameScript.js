@@ -11,6 +11,7 @@ Cu.import('resource://gre/modules/PrivateBrowsingUtils.jsm');
 const uuidGenerator = Cc['@mozilla.org/uuid-generator;1'].getService(Ci.nsIUUIDGenerator);
 
 const {
+  EXPIRE_SESSION,
   ALLOW_ACTION,
   DENY_ACTION,
 } = Ci.nsIPermissionManager;
