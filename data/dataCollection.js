@@ -28,18 +28,6 @@ const FLASH_MIME_TYPE = 'application/x-shockwave-flash';
 const PROMISE_MAP_TIMEOUT = 2000;
 const promiseMap = new Map();
 
-addMessageListener('Browser:Reload', (msg) => {
-  sendAsyncMessage('PluginSafety:BrowserReload');
-});
-
-addMessageListener('BrowserPlugins:NotificationShown', (msg) => {
-  sendAsyncMessage('PluginSafety:NotificationShown');
-});
-
-addMessageListener('BrowserPlugins:ActivatePlugins', (msg) => {
-  sendAsyncMessage('PluginSafety:BrowserActivatePlugins', msg.json);
-});
-
 function dumpError(e) {
   sendAsyncMessage('PluginSafety:BrowserEventRelay', { error: e.toString() + '\n' + e.stack });
 }
