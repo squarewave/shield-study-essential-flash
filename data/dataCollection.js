@@ -160,7 +160,7 @@ function shouldShowOverlay(plugin) {
 
 function getWindowID(win) {
   util = win.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  return util.outerWindowID;
+  return util.currentInnerWindowID;
 }
 
 function handlePageShow(event) {

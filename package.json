@@ -1,7 +1,7 @@
 {
   "name": "shield-study-plugin-safety",
   "description": "Plugin Safety as a Shield Study",
-  "version": "1.0.5",
+  "version": "1.0.8",
   "author": "Doug Thayer",
   "bugs": {
     "url": "https://github.com/mozilla/shield-study-essential-flash/issues"
