@@ -4,8 +4,6 @@ const { interfaces: Ci, classes: Cc, utils: Cu } = Components;
 
 Cu.import('resource://gre/modules/NetUtil.jsm');
 Cu.import('resource://gre/modules/Services.jsm');
-Cu.import('resource://gre/modules/Task.jsm');
-Cu.import('resource://gre/modules/Timer.jsm');
 Cu.import('resource://gre/modules/PrivateBrowsingUtils.jsm');
 
 const uuidGenerator = Cc['@mozilla.org/uuid-generator;1'].getService(Ci.nsIUUIDGenerator);
@@ -24,9 +22,6 @@ const {
 } = Ci.nsIObjectLoadingContent;
 
 const FLASH_MIME_TYPE = 'application/x-shockwave-flash';
-
-const PROMISE_MAP_TIMEOUT = 2000;
-const promiseMap = new Map();
 
 function dumpError(e) {
   sendAsyncMessage('PluginSafety:BrowserEventRelay', { error: e.toString() + '\n' + e.stack });
@@ -164,29 +159,14 @@ function shouldShowOverlay(plugin) {
 }
 
 function getWindowID(win) {
-  if (win.__pluginSafetyWindowID) {
-    return win.__pluginSafetyWindowID;
-  }
-
-  return new Promise((resolve, reject) => {
-    const docURI = win.document.documentURI;
-    const promises = promiseMap.get(docURI) || [];
-    promises.push(resolve);
-    promiseMap.set(docURI, promises);
-    setTimeout(() => {
-      if (promiseMap.delete(docURI)) {
-        reject('No window ID created for document ' + docURI);
-      }
-    }, PROMISE_MAP_TIMEOUT);
-  });
+  util = win.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  return util.outerWindowID;
 }
 
-const handlePageShow = Task.async(function* (event) {
+function handlePageShow(event) {
   try {
     let doc = event.target;
     let win = doc.defaultView.self;
-
-    win.__pluginSafetyWindowID = uuidGenerator.generateUUID().toString();
 
     const docObj = {
       host: getDocumentHost(doc),
@@ -206,24 +186,18 @@ const handlePageShow = Task.async(function* (event) {
       docURI: doc.documentURI,
       isTopLevel: win.top === win,
       parentWindowID: null,
-      windowID: win.__pluginSafetyWindowID,
+      windowID: getWindowID(win),
       docObj
     };
 
-    let resolves = promiseMap.get(win.document.documentURI);
-    if (resolves) {
-      resolves.forEach(resolve => resolve(win.__pluginSafetyWindowID));
-    }
-    promiseMap.delete(win.document.documentURI);
-
     if (!payload.isTopLevel) {
-      payload.parentWindowID = yield getWindowID(win.parent);
+      payload.parentWindowID = getWindowID(win.parent);
       payload.docObj.is3rdParty = getDocumentHost(doc) != getDocumentHost(win.top.document);
     }
 
     if (doc.documentFlashClassification != 'allow') {
       if (doc.readyState == 'complete') {
-        Task.spawn(handleUnallowedPageLoading(event));
+        handleUnallowedPageLoading(event);
       } else {
         doc.addEventListener('DOMContentLoaded', listener);
       }
@@ -233,7 +207,7 @@ const handlePageShow = Task.async(function* (event) {
   } catch (e) {
     dumpError(e);
   }
-});
+}
 
 function getPluginClassificationStr(plugin, pluginInfo) {
   switch (pluginInfo.fallbackType) {
@@ -256,7 +230,7 @@ function getPluginClassificationStr(plugin, pluginInfo) {
   return null;
 }
 
-const handleUnallowedPageLoading = Task.async(function* (event) {
+function handleUnallowedPageLoading(event) {
   try {
     let doc = event.target;
     let win = doc.defaultView.self;
@@ -288,7 +262,7 @@ const handleUnallowedPageLoading = Task.async(function* (event) {
 
           const payload = {
             type: 'PluginFound',
-            windowID: yield getWindowID(win),
+            windowID: getWindowID(win),
             docURI: doc.documentURI,
             flashObj
           };
@@ -300,9 +274,9 @@ const handleUnallowedPageLoading = Task.async(function* (event) {
   } catch (e) {
     dumpError(e);
   }
-});
+}
 
-const handlePluginEvent = Task.async(function* (event) {
+function handlePluginEvent(event) {
   try {
     const eventType = event.type;
     const plugin = event.target;
@@ -348,7 +322,7 @@ const handlePluginEvent = Task.async(function* (event) {
 
     const payload = {
       type: 'PluginFound',
-      windowID: yield getWindowID(win),
+      windowID: getWindowID(win),
       docURI: doc.documentURI,
       overlayId,
       flashObj
@@ -358,7 +332,7 @@ const handlePluginEvent = Task.async(function* (event) {
   } catch (e) {
     dumpError(e);
   }
-});
+}
 
 const listener = {
   handleEvent(event) {
@@ -382,9 +356,8 @@ const listener = {
   }
 };
 
-
 addEventListener('PluginBindingAttached', listener, true, true);
 addEventListener('PluginInstantiated', listener, true, true);
-addEventListener('pageshow', listener, true);
+addEventListener('pageshow', listener, true, true);
 
 /* eslint-enable no-undef */
