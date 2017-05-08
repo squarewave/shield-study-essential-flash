@@ -1,10 +1,10 @@
 {
   "name": "plugin-safety",
   "description": "Plugin Safety as a Shield Study",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "Doug Thayer",
   "bugs": {
-    "url": "https://github.com/mozilla/shield-study-essential-flash/issues"
+    "url": "https://github.com/squarewave/shield-study-essential-flash/issues"
   },
   "dependencies": {},
   "devDependencies": {
@@ -26,7 +26,7 @@
     "firefox": ">=38.0a1",
     "fennec": ">=38.0a1"
   },
-  "homepage": "http://github.com/mozilla/shield-study-essential-flash",
+  "homepage": "http://github.com/squarewave/shield-study-essential-flash",
   "keywords": [
     "jetpack",
     "shield-study"
@@ -35,7 +35,7 @@
   "main": "lib/index.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/mozilla/shield-study-essential-flash.git"
+    "url": "git://github.com/squarewave/shield-study-essential-flash.git"
   },
   "scripts": {
     "eslint": "grunt eslint",
