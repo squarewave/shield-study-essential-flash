@@ -1,7 +1,7 @@
 {
   "name": "plugin-safety",
   "description": "Plugin Safety as a Shield Study",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "author": "Doug Thayer",
   "bugs": {
     "url": "https://github.com/squarewave/shield-study-essential-flash/issues"
@@ -48,5 +48,8 @@
     "pretest": "npm-run-all lint:*",
     "test": "grunt test && istanbul check-coverage --statements 100 --functions 100 --branches 100 --lines 100 coverage/reports/coverage.json"
   },
-  "title": "Plugin Safety"
+  "title": "Plugin Safety",
+  "permissions": {
+    "multiprocess": true
+  }
 }
