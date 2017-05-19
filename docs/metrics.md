@@ -40,9 +40,9 @@ the following payload using an external telemetry ping:
                 "docshellId": "{1234-abcd-...}",
 
                 "user-feedback": {
-                    choice: "broken-video | broken-audio | etc..",
-                    problemFixed: "false | true | null",
-                    details: "free-form string field",
+                    "choice": "broken-video | broken-audio | etc..",
+                    "problemFixed": "false | true | null",
+                    "detail": "free-form string field",
                 },
 
                 "flashObjs": [
