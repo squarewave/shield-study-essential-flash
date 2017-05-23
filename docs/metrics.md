@@ -14,8 +14,7 @@ described below.
 ## Data collection
 
 The data collection, which is meant to support the reports and data analysis
-requested at the [study document](https://docs.google.com/document/d/1sYp0DNio
-PA5iF3iw9LHGf1uN5B5AgdCu7jJxAh0MiqA/edit#heading=h.ki2euufqck3g), will send
+requested at the [study document](https://docs.google.com/document/d/1sYp0DNioPA5iF3iw9LHGf1uN5B5AgdCu7jJxAh0MiqA/edit#heading=h.ki2euufqck3g), will send
 the following payload using an external telemetry ping:
 
 ```js
