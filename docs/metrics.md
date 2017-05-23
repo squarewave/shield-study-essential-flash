@@ -220,4 +220,4 @@ The meaning of each field is detailed below:
 `counts user-action feedback-given`: Number of times the user provided
     feedback through the study UI.
 
-> **Note**: No data will be accumulated for Private Browsing windows.
+> **Note**: This data _will_ be collected for Private Browsing windows.

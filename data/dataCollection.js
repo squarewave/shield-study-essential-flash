@@ -168,6 +168,8 @@ function handlePageShow(event) {
     let doc = event.target;
     let win = doc.defaultView.self;
 
+    let isPrivate = PrivateBrowsingUtils.isContentWindowPrivate(event.target.ownerGlobal);
+
     const docObj = {
       host: getDocumentHost(doc),
       ctaSetting: getCtaSetting(doc.documentURI),
@@ -178,6 +180,7 @@ function handlePageShow(event) {
       docshellId: doc.docShell.historyID.toString(),
       'user-feedback': null,
       flashObjs: null,
+      private: isPrivate,
       subDocs: []
     };
 
@@ -336,11 +339,6 @@ function handlePluginEvent(event) {
 
 const listener = {
   handleEvent(event) {
-    if (PrivateBrowsingUtils.isContentWindowPrivate(event.target.ownerGlobal)) {
-      // don't log anything for private sessions. Hooray respecting people!
-      return;
-    }
-
     switch (event.type) {
     case 'pageshow':
       handlePageShow(event);
